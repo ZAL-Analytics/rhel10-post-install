@@ -25,6 +25,17 @@ sudo dnf install -y cuda-nvcc-${CUDA_VER} cuda-cudart-devel-${CUDA_VER} cuda-lib
 echo 'export PATH=/usr/local/cuda/bin:$PATH' >> ~/.bashrc
 source ~/.bashrc
 
+# ====== Install tensortt sdk and tools ======
+sudo dnf install -y libcudnn9-cuda-13
+
+wget \
+     "https://developer.download.nvidia.com/compute/tensorrt/10.16.1/local_installers/nv-tensorrt-local-repo-rhel9-10.16.1-cuda-13.2-1.0-1.x86_64.rpm" \
+     -O /tmp/tensorrt-10.16.1.rpm
+
+sudo rpm -Uvh /tmp/tensorrt-10.16.1.rpm
+sudo dnf clean expire-cache
+sudo dnf install -y libnvonnxparsers10
+sudo dnf install -y tensorrt
 
 # ====== Install cuda profilers ======
 sudo dnf install -y nsight-systems-2025.6.3 nsight-compute-2026.1.1
