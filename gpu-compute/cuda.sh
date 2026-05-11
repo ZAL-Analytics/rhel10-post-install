@@ -37,6 +37,8 @@ sudo dnf clean expire-cache
 sudo dnf install -y libnvonnxparsers10
 sudo dnf install -y tensorrt
 
+sudo rm /tmp/tensorrt-10.16.1.rpm 
+
 # ====== Install cuda profilers ======
 sudo dnf install -y nsight-systems-2025.6.3 nsight-compute-2026.1.1
 ## Add and configure ncu for RHEL10
