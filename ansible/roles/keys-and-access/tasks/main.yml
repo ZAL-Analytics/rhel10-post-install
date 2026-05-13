@@ -1,0 +1,88 @@
+---
+- name: Ensure .ssh directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.ssh"
+    state: directory
+    mode: '0700'
+
+- name: Generate GitHub SSH key
+  ansible.builtin.command:
+    cmd: >
+      ssh-keygen -t ed25519
+      -f "{{ github_key_path }}"
+      -N "" -C "{{ user.email }}"
+    creates: "{{ github_key_path }}"
+
+- name: Add github.com entry to SSH config
+  ansible.builtin.blockinfile:
+    path: "{{ ssh_config_path }}"
+    create: true
+    mode: '0600'
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - github"
+    block: |
+      Host github.com
+        HostName github.com
+        User git
+        IdentityFile ~/.ssh/{{ ssh.github_key_name }}
+
+- name: Read GitHub public key
+  ansible.builtin.command:
+    cmd: cat "{{ github_key_path }}.pub"
+  register: github_pubkey
+  changed_when: false
+
+- name: Display public key
+  ansible.builtin.debug:
+    msg: "Add this key to GitHub (Settings → SSH keys):\n{{ github_pubkey.stdout }}"
+
+- name: Configure git user email
+  ansible.builtin.command:
+    cmd: git config --global user.email "{{ user.email }}"
+  changed_when: true
+
+- name: Configure git user name
+  ansible.builtin.command:
+    cmd: git config --global user.name "{{ user.name }}"
+  changed_when: true
+
+- name: Ensure .claude directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.claude"
+    state: directory
+    mode: '0755'
+
+- name: Write Claude Code settings.json
+  ansible.builtin.copy:
+    dest: "{{ ansible_env.HOME }}/.claude/settings.json"
+    mode: '0644'
+    content: |
+      {
+        "model": "{{ claude.model }}",
+        "env": {
+          "MAX_THINKING_TOKENS": "{{ claude.max_thinking_tokens }}",
+          "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "{{ claude.autocompact_pct }}",
+          "CLAUDE_CODE_SUBAGENT_MODEL": "{{ claude.subagent_model }}"
+        },
+        "hooks": {
+          "PreToolUse": [
+            {
+              "matcher": "Read",
+              "hooks": [{"type": "command", "command": "~/.claude/read-once/hook.sh"}]
+            }
+          ],
+          "PostCompact": [
+            {
+              "matcher": "",
+              "hooks": [{"type": "command", "command": "~/.claude/read-once/compact.sh"}]
+            }
+          ]
+        }
+      }
+
+- name: Install read-once hook
+  ansible.builtin.shell:
+    cmd: >
+      curl -fsSL
+      https://raw.githubusercontent.com/Bande-a-Bonnot/Boucle-framework/main/tools/read-once/install.sh
+      | bash
+    creates: "{{ ansible_env.HOME }}/.claude/read-once/hook.sh"

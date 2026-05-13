@@ -1,0 +1,39 @@
+---
+- name: Install EPEL repository
+  ansible.builtin.dnf:
+    name: "{{ epel_url }}"
+    state: present
+    disable_gpg_check: false
+
+- name: Install base packages
+  ansible.builtin.dnf:
+    name:
+      - kernel-devel
+      - htop
+      - vim
+      - git
+      - wget
+      - curl
+      - rsync
+      - gcc
+      - gcc-c++
+      - clang
+      - lld
+      - cmake
+      - ninja-build
+      - python3
+      - python3-pip
+    state: present
+
+- name: Install Rust via rustup
+  ansible.builtin.shell:
+    cmd: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    creates: "{{ ansible_env.HOME }}/.cargo/bin/rustup"
+  become: false
+
+- name: Ensure cargo env is sourced in .bashrc
+  ansible.builtin.lineinfile:
+    path: "{{ ansible_env.HOME }}/.bashrc"
+    line: 'source "$HOME/.cargo/env"'
+    state: present
+  become: false

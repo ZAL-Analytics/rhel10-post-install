@@ -1,0 +1,113 @@
+---
+- name: Enable required RHEL10 repositories
+  community.general.rhsm_repository:
+    name:
+      - "rhel-10-for-{{ ansible_architecture }}-appstream-rpms"
+      - "rhel-10-for-{{ ansible_architecture }}-baseos-rpms"
+      - "codeready-builder-for-rhel-10-{{ ansible_architecture }}-rpms"
+    state: enabled
+
+- name: Add CUDA repository
+  ansible.builtin.command:
+    cmd: >
+      dnf config-manager --add-repo
+      https://developer.download.nvidia.com/compute/cuda/repos/rhel10/x86_64/cuda-rhel10.repo
+    creates: /etc/yum.repos.d/cuda-rhel10.repo
+
+- name: Expire DNF cache
+  ansible.builtin.command:
+    cmd: dnf clean expire-cache
+  changed_when: true
+
+- name: Install kernel headers
+  ansible.builtin.dnf:
+    name:
+      - kernel-devel-matched
+      - kernel-headers
+    state: present
+
+- name: Install NVIDIA CUDA driver
+  ansible.builtin.dnf:
+    name: nvidia-driver-cuda
+    state: present
+
+- name: Install CUDA libraries (version {{ cuda.version }})
+  ansible.builtin.dnf:
+    name:
+      - "cuda-nvcc-{{ cuda.version }}"
+      - "cuda-cudart-devel-{{ cuda.version }}"
+      - "cuda-libraries-devel-{{ cuda.version }}"
+    state: present
+
+- name: Add CUDA bin to PATH in .bashrc
+  ansible.builtin.lineinfile:
+    path: "{{ ansible_env.HOME }}/.bashrc"
+    line: 'export PATH=/usr/local/cuda/bin:$PATH'
+    state: present
+  become: false
+
+- name: Install cuDNN
+  ansible.builtin.dnf:
+    name: libcudnn9-cuda-13
+    state: present
+
+- name: Download TensorRT RPM
+  ansible.builtin.get_url:
+    url: "{{ cuda.tensorrt_rpm_url }}"
+    dest: "{{ tensorrt_rpm_dest }}"
+    mode: '0644'
+
+- name: Install TensorRT local repo RPM
+  ansible.builtin.command:
+    cmd: rpm -Uvh "{{ tensorrt_rpm_dest }}"
+  args:
+    creates: /etc/yum.repos.d/nv-tensorrt-local*.repo
+
+- name: Expire DNF cache after TensorRT repo
+  ansible.builtin.command:
+    cmd: dnf clean expire-cache
+  changed_when: true
+
+- name: Install TensorRT packages
+  ansible.builtin.dnf:
+    name:
+      - libnvonnxparsers10
+      - tensorrt
+    state: present
+
+- name: Remove TensorRT RPM file
+  ansible.builtin.file:
+    path: "{{ tensorrt_rpm_dest }}"
+    state: absent
+
+- name: Install CUDA profilers
+  ansible.builtin.dnf:
+    name:
+      - "nsight-systems-{{ cuda.nsight_systems_version }}"
+      - "nsight-compute-{{ cuda.nsight_compute_version }}"
+    state: present
+
+- name: Add Nsight Compute to PATH in .bashrc
+  ansible.builtin.lineinfile:
+    path: "{{ ansible_env.HOME }}/.bashrc"
+    line: "export PATH=$PATH:/opt/nvidia/nsight-compute/{{ cuda.nsight_compute_version }}"
+    state: present
+  become: false
+
+- name: Configure perf_event_paranoid for profiling
+  ansible.posix.sysctl:
+    name: kernel.perf_event_paranoid
+    value: '2'
+    state: present
+    reload: true
+
+- name: Disable NVIDIA profiling restriction
+  ansible.builtin.copy:
+    dest: /etc/modprobe.d/nvidia-profiling.conf
+    content: "options nvidia NVreg_RestrictProfilingToAdminUsers=0\n"
+    mode: '0644'
+
+- name: Rebuild initramfs
+  ansible.builtin.command:
+    cmd: dracut --force
+  changed_when: true

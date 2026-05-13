@@ -1,0 +1,4 @@
+---
+# Versions and URLs come from config.json (cuda.* keys).
+# Only Ansible-specific implementation details belong here.
+tensorrt_rpm_dest: "/tmp/tensorrt.rpm"

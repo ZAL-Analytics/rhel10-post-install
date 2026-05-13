@@ -1,0 +1,2 @@
+# Generated kickstart file — produce with: ./kickstart/generate.sh > kickstart/rhel10-minimal.ks
+kickstart/rhel10-minimal.ks

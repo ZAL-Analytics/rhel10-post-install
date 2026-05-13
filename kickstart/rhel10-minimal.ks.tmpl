@@ -1,0 +1,93 @@
+#version=RHEL10
+# RHEL10 minimal installation for development workstations
+# Edit disk, network, and rootpw sections before use.
+# GPU compute backends (CUDA / Vulkan) must be set up after first boot
+# via bash/setup.sh or the Ansible playbook.
+
+# Installation source — replace with your mirror or use cdrom
+cdrom
+# url --url="http://your-rhel10-mirror/BaseOS/"
+
+# Keyboard and language
+keyboard --vckeymap=us --xlayouts='us'
+lang en_US.UTF-8
+
+# Network — adjust interface name as needed
+network --bootproto=dhcp --activate
+network --hostname=rhel10-dev
+
+# Root password
+# Generate hash with: python3 -c "import crypt,getpass; print(crypt.crypt(getpass.getpass(), crypt.mksalt(crypt.METHOD_SHA512)))"
+rootpw --iscrypted $6$CHANGEME_REPLACE_THIS_HASH
+
+# Timezone
+timezone UTC --utc
+
+# Bootloader
+bootloader --append="rhgb quiet" --location=mbr
+
+# Disk partitioning — adjust drive name (sda, nvme0n1, etc.)
+ignoredisk --only-use=sda
+clearpart --all --initlabel --drives=sda
+autopart --type=lvm
+
+# SELinux and firewall
+selinux --enforcing
+firewall --enabled --ssh
+
+# Services
+services --enabled="chronyd,sshd"
+
+# Skip first-boot setup wizard
+firstboot --disable
+
+# Reboot after installation completes
+reboot
+
+%packages
+@^minimal-environment
+kernel-devel
+htop
+vim
+git
+wget
+curl
+rsync
+gcc
+gcc-c++
+clang
+cmake
+python3
+python3-pip
+memtester
+hdparm
+smartmontools
+fio
+chrony
+%end
+
+%post --log=/root/ks-post.log
+
+# Install EPEL
+dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
+dnf install -y lld ninja-build
+
+# Install Rust system-wide (each user should re-run rustup for per-user toolchains)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
+ln -sf /root/.cargo/bin/rustup /usr/local/bin/rustup
+ln -sf /root/.cargo/bin/cargo  /usr/local/bin/cargo
+ln -sf /root/.cargo/bin/rustc  /usr/local/bin/rustc
+
+# Git system-level defaults (override per user after first boot)
+git config --system user.email "__GIT_EMAIL__"
+git config --system user.name "__GIT_NAME__"
+
+# Reminder in MOTD
+cat >> /etc/motd << 'EOF'
+
+  Post-install GPU setup: run bash/setup.sh --gpu <cuda|vulkan|both>
+  or:  ansible-playbook ansible/site.yml -e "gpu_backend=cuda"
+
+EOF
+
+%end

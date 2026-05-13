@@ -1,0 +1,25 @@
+{
+  "user": {
+    "name": "Your Name",
+    "email": "you@example.com"
+  },
+  "ssh": {
+    "github_key_name": "github"
+  },
+  "claude": {
+    "model": "sonnet",
+    "max_thinking_tokens": "20000",
+    "autocompact_pct": "50",
+    "subagent_model": "haiku"
+  },
+  "cuda": {
+    "version": "13-1",
+    "tensorrt_rpm_url": "https://developer.download.nvidia.com/compute/tensorrt/10.16.1/local_installers/nv-tensorrt-local-repo-rhel9-10.16.1-cuda-13.2-1.0-1.x86_64.rpm",
+    "nsight_systems_version": "2025.6.3",
+    "nsight_compute_version": "2026.1.1"
+  },
+  "hw_tests": {
+    "memory_mb": 2048,
+    "memory_passes": 1
+  }
+}

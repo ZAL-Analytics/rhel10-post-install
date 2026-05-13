@@ -1,0 +1,61 @@
+---
+- name: Install hardware testing tools
+  ansible.builtin.dnf:
+    name:
+      - memtester
+      - hdparm
+      - smartmontools
+      - fio
+    state: present
+
+- name: Run memory benchmark ({{ hw_tests.memory_mb }} MB, {{ hw_tests.memory_passes }} pass(es))
+  ansible.builtin.command:
+    cmd: memtester {{ hw_tests.memory_mb }} {{ hw_tests.memory_passes }}
+  changed_when: false
+
+- name: Discover block devices
+  ansible.builtin.shell:
+    cmd: fdisk -l | grep -E "Disk /dev/(nvme|sd)" | awk '{print $2}' | tr -d ':'
+  register: disk_list
+  changed_when: false
+
+- name: Run fio sequential read benchmark
+  ansible.builtin.command:
+    cmd: >
+      fio --name=seq-read --rw=read --bs=1M --size=1G
+      --filename={{ item }} --direct=1 --numjobs=1 --runtime=30
+      --time_based --group_reporting
+  loop: "{{ disk_list.stdout_lines }}"
+  changed_when: false
+  when: disk_list.stdout != ""
+
+- name: Run fio sequential write benchmark
+  ansible.builtin.command:
+    cmd: >
+      fio --name=seq-write --rw=write --bs=1M --size=1G
+      --filename=/tmp/fio-test-{{ item | basename }} --direct=1 --numjobs=1 --runtime=30
+      --time_based --group_reporting
+  loop: "{{ disk_list.stdout_lines }}"
+  changed_when: false
+  when: disk_list.stdout != ""
+
+- name: Run fio random read/write benchmark
+  ansible.builtin.command:
+    cmd: >
+      fio --name=rand-rw --rw=randrw --bs=4k --size=1G
+      --filename=/tmp/fio-test-{{ item | basename }} --direct=1 --numjobs=4 --runtime=60
+      --time_based --group_reporting
+  loop: "{{ disk_list.stdout_lines }}"
+  changed_when: false
+  when: disk_list.stdout != ""
+
+- name: Run smartctl health check
+  ansible.builtin.command:
+    cmd: >
+      smartctl -H
+      {{ '-d nvme' if 'nvme' in item else '' }}
+      {{ item | regex_replace('n[0-9]+$', '') if 'nvme' in item else item }}
+  loop: "{{ disk_list.stdout_lines }}"
+  changed_when: false
+  failed_when: false
+  when: disk_list.stdout != ""

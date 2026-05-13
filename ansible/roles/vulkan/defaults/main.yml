@@ -1,0 +1,3 @@
+---
+shaderc_build_dir: "/tmp/shaderc"
+slang_build_dir: "/tmp/slang"

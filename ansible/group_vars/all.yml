@@ -1,0 +1,8 @@
+---
+# Ansible-specific flags — everything else comes from config.json
+
+# GPU compute backend: none | cuda | vulkan | both
+gpu_backend: "none"
+
+# Set to true to run memtester + disk benchmarks
+run_hw_tests: false

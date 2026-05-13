@@ -1,0 +1,24 @@
+---
+- name: RHEL10 post-install setup
+  hosts: all
+  vars_files:
+    - "{{ playbook_dir }}/../config.json"
+    - group_vars/all.yml
+  roles:
+    - role: base-packages
+      become: true
+
+    - role: keys-and-access
+      become: false
+
+    - role: hw-testers
+      become: true
+      when: run_hw_tests | default(false)
+
+    - role: cuda
+      become: true
+      when: gpu_backend in ['cuda', 'both']
+
+    - role: vulkan
+      become: true
+      when: gpu_backend in ['vulkan', 'both']
