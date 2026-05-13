@@ -20,7 +20,10 @@ info "Installing C/C++ toolchain..."
 sudo dnf install -y gcc gcc-c++ clang lld cmake ninja-build
 
 info "Installing Python..."
-sudo dnf install -y python3 python3-pip
+sudo dnf install -y python3 python3-pip python3-devel
+
+info "Installing R..."
+sudo dnf install -y R R-devel libcurl-devel openssl-devel libxml2-devel
 
 info "Installing Rust via rustup..."
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
